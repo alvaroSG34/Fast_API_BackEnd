@@ -14,5 +14,6 @@ class Product(Base):
     image_url = Column(String(255), nullable=True)
     category = Column(String(50), nullable=True, index=True)
     
-    # Relaciones (se pueden expandir según necesidades)
-    cart_items = relationship("CartItem", back_populates="product", cascade="all, delete") 
+    # Relaciones
+    cart_items = relationship("CartItem", back_populates="product", cascade="all, delete")
+    order_items = relationship("OrderItem", back_populates="product") 

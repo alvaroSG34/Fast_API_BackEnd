@@ -12,3 +12,4 @@ class User(Base):
     
     # Relaciones
     carts = relationship("Cart", back_populates="user")
+    orders = relationship("Order", back_populates="user")
