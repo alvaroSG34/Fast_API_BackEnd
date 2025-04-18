@@ -4,7 +4,8 @@ from sqlalchemy.orm import Session
 from app.db.session import SessionLocal
 from app.models.user import User
 from app.services.auth import verify_password, create_access_token
-from app.schemas.user import Token
+from app.schemas.user import Token, UserCreate, UserResponse
+from app.services.user_service import create_user
 
 router = APIRouter()
 
@@ -30,3 +31,13 @@ def login(data: LoginRequest, db: Session = Depends(get_db)):
     "role": db_user.role.name  # 👈 Agregamos el rol al payload del token
 })
     return {"access_token": token, "token_type": "bearer"}
+
+@router.post("/register", response_model=UserResponse, status_code=201)
+def register(user: UserCreate, db: Session = Depends(get_db)):
+    # Verificar si el email ya existe
+    existing_email = db.query(User).filter(User.email == user.email).first()
+    if existing_email:
+        raise HTTPException(status_code=400, detail="Ese correo ya está registrado")
+
+    # Crear el usuario con rol cliente por defecto
+    return create_user(db, user)
