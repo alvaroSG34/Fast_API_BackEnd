@@ -4,7 +4,8 @@ from app.db.session import SessionLocal
 from app.schemas.user import (
     UserResponse,
     UserCreate,
-    UserRoleUpdate
+    UserRoleUpdate,
+    UserUpdate
 )
 from app.services.user_service import create_user
 from app.models.user import User
@@ -49,6 +50,19 @@ def list_users(
 @router.get("/me", response_model=UserResponse)
 def get_profile(current_user: User = Depends(get_current_user)):
     return current_user
+
+@router.put("/{user_id}", response_model=UserResponse)
+def update_user(user_id: int, data: UserUpdate, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+
+    for key, value in data.dict(exclude_unset=True).items():
+        setattr(user, key, value)
+
+    db.commit()
+    db.refresh(user)
+    return user
 
 # Actualizar el rol del usuario
 @router.put("/{user_id}/role", status_code=status.HTTP_200_OK)

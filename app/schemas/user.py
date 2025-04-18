@@ -34,6 +34,11 @@ class Token(BaseModel):
     access_token: str
     token_type: str = "bearer"
 
+class UserUpdate(BaseModel):
+    nombre: Optional[str]
+    apellido: Optional[str]
+    telefono: Optional[str]
+
 # ✅ Actualización de rol
 class UserRoleUpdate(BaseModel):
     role_id: int
