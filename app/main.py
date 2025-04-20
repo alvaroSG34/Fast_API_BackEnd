@@ -9,6 +9,8 @@ from app.api.v1.routes_product import router as product_router
 from app.api.v1.routes_inventory import router as inventory_router
 from app.api.v1.routes_proveedor import router as proveedor_router
 from app.api.v1.routes_producto_proveedor import router as producto_proveedor_router
+from app.api.v1.routes_cart import router as cart_router
+from app.api.v1.routes_recommendations import router as recommendations_router
 app = FastAPI()
 
 # Middleware CORS
@@ -29,6 +31,8 @@ app.include_router(product_router, prefix="/api/v1/products", tags=["Products"])
 app.include_router(inventory_router, prefix="/api/v1/inventario", tags=["Inventario"])
 app.include_router(proveedor_router, prefix="/api/v1/proveedores", tags=["Proveedores"])
 app.include_router(producto_proveedor_router, prefix="/api/v1/producto-proveedor", tags=["ProductoProveedor"])
+app.include_router(cart_router, prefix="/api/v1/carts", tags=["Carritos"])
+app.include_router(recommendations_router, prefix="/api/v1/recommendations", tags=["Recomendaciones"])
 
 # 👉 Custom OpenAPI para habilitar el botón Authorize con JWT Bearer
 def custom_openapi():

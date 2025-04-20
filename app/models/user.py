@@ -15,3 +15,4 @@ class User(Base):
     fecha_registro = Column(DateTime, default=datetime.UTC)  # 👈 Cambiado a String para almacenar la fecha como texto
     role_id = Column(Integer, ForeignKey("roles.id"), nullable=True)  
     role = relationship("Role")  # 👈 Relación a objeto Role
+    ventas = relationship("Venta", back_populates="usuario")

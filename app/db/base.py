@@ -10,6 +10,8 @@ from app.models.product import Product
 from app.models.inventory import Inventory
 from app.models.proveedor import Proveedor
 from app.models.producto_proveedor import ProductoProveedor
+from app.models.sale import Venta
+from app.models.sale_detail import DetalleVenta
 
 
 

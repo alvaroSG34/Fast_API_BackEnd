@@ -17,4 +17,6 @@ class Product(Base):
     categoria = relationship("Category", backref="productos")
     inventario = relationship("Inventory", back_populates="producto", uselist=False)
     proveedores = relationship("ProductoProveedor", back_populates="producto")
+    detalles_venta = relationship("DetalleVenta", back_populates="producto")
+    detalles_carrito = relationship("DetalleCarrito", back_populates="producto")
 
