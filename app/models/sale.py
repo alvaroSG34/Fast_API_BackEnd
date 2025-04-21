@@ -18,7 +18,7 @@ class MetodoPago(str, enum.Enum):
 class Venta(Base):
     __tablename__ = "venta"
 
-    id_venta = Column(Integer, primary_key=True, index=True)
+    id_venta = Column(Integer, primary_key=True, index=True, autoincrement=True)
     numero_factura = Column(String, nullable=False)
     id_usuario = Column(Integer, ForeignKey("users.id"), nullable=False)
     fecha_venta = Column(DateTime, nullable=False)

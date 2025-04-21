@@ -58,3 +58,14 @@ def checkout_cart(cart_id: int, data: dict, db: Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail="Método de pago es requerido")
     
     return cart_service.process_cart_checkout(db, cart_id, data["metodo_pago"]) 
+
+# 7. Limpiar todo el carrito de un usuario (todos los ítems)
+@router.delete("/user/{user_id}/clear", response_model=dict)
+def clear_cart_by_user(user_id: int, db: Session = Depends(get_db)):
+    """
+    Elimina todos los items del carrito activo del usuario.
+    """
+    try:
+        return cart_service.clear_cart_by_user(db, user_id)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

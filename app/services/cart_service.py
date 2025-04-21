@@ -3,6 +3,8 @@ from app.models.cart import CarritoCompra
 from app.models.cart_item import DetalleCarrito
 from app.models.product import Product
 from app.schemas.cart import CartCreate
+from app.models.cart import CarritoCompra
+from app.models.cart_item import DetalleCarrito
 from app.schemas.cart_item import CartItemCreate, CartItemUpdate
 from fastapi import HTTPException
 import datetime
@@ -297,3 +299,21 @@ def process_cart_checkout(db: Session, cart_id: int, metodo_pago: str):
         print(traceback.format_exc())
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Error al procesar el carrito: {str(e)}") 
+    
+def clear_cart_by_user(db: Session, user_id: int):
+    from app.models.cart import CarritoCompra
+    from app.models.cart_item import DetalleCarrito
+
+    # Buscar el carrito activo del usuario
+    cart = db.query(CarritoCompra).filter(CarritoCompra.id_usuario == user_id, CarritoCompra.estado == "activo").first()
+    if not cart:
+        return {"message": f"No hay carrito activo para el usuario {user_id}"}
+
+    # Borrar todos los ítems asociados
+    deleted = db.query(DetalleCarrito).filter(DetalleCarrito.id_carrito == cart.id_carrito).delete()
+    db.commit()
+
+    return {
+        "message": f"Se eliminaron {deleted} item(s) del carrito del usuario {user_id}"
+    }
+

@@ -17,7 +17,7 @@ class InventoryUpdate(BaseModel):
 
 class InventoryOut(InventoryBase):
     id: int
-    fecha_actualizacion: datetime
+    fecha_actualizacion: Optional[datetime] 
     producto: ProductOut  
 
     class Config:
