@@ -19,7 +19,7 @@ app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-    "https://frontend-pos-production.up.railway.app/",
+    "https://frontend-pos-production.up.railway.app",
     "http://localhost:5173",  # mantenerlo para pruebas locales si quieres
 ],  # 👈 Permitir cualquier origen para desarrollo
     allow_credentials=True,
