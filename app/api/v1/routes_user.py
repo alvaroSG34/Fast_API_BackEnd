@@ -1,14 +1,19 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from app.db.session import SessionLocal
-from app.schemas.user import UserResponse, UserCreate, UserRoleUpdate
+from app.schemas.user import (
+    UserResponse,
+    UserCreate,
+    UserRoleUpdate,
+    UserUpdate
+)
 from app.services.user_service import create_user
 from app.models.user import User
 from app.services.dependencies import get_current_user, get_current_user_with_permissions
-from app.models.user import User
 
 router = APIRouter()
 
+# Dependency para la DB
 def get_db():
     db = SessionLocal()
     try:
@@ -16,29 +21,24 @@ def get_db():
     finally:
         db.close()
 
-@router.post("/", response_model=UserResponse, status_code=201)
+# Crear nuevo usuario
+@router.post("/", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
 def create_new_user(user: UserCreate, db: Session = Depends(get_db)):
     existing_email = db.query(User).filter(User.email == user.email).first()
     if existing_email:
         raise HTTPException(status_code=400, detail="Ese correo ya está registrado")
-
-    existing_username = db.query(User).filter(User.username == user.username).first()
-    if existing_username:
-        raise HTTPException(status_code=400, detail="El usuario ya existe")
-
     return create_user(db, user)
 
-@router.delete("/{user_id}", status_code=204)
+# Eliminar usuario por ID
+@router.delete("/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_user(user_id: int, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
-
     db.delete(user)
     db.commit()
-    return
 
-
+# Listar todos los usuarios (solo admins)
 @router.get("/", response_model=list[UserResponse])
 def list_users(
     db: Session = Depends(get_db),
@@ -46,12 +46,26 @@ def list_users(
 ):
     return db.query(User).all()
 
-
+# Obtener perfil del usuario autenticado
 @router.get("/me", response_model=UserResponse)
 def get_profile(current_user: User = Depends(get_current_user)):
     return current_user
 
-@router.put("/{user_id}/role")
+@router.put("/{user_id}", response_model=UserResponse)
+def update_user(user_id: int, data: UserUpdate, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+
+    for key, value in data.dict(exclude_unset=True).items():
+        setattr(user, key, value)
+
+    db.commit()
+    db.refresh(user)
+    return user
+
+# Actualizar el rol del usuario
+@router.put("/{user_id}/role", status_code=status.HTTP_200_OK)
 def update_user_role(user_id: int, data: UserRoleUpdate, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
@@ -59,5 +73,4 @@ def update_user_role(user_id: int, data: UserRoleUpdate, db: Session = Depends(g
     
     user.role_id = data.role_id
     db.commit()
-    return {"detail": "Rol actualizado"}
-
+    return {"detail": "Rol actualizado correctamente"}
