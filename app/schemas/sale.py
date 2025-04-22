@@ -59,6 +59,9 @@ class VentaResumen(BaseModel):
     estado: str
     cliente: Optional[str]
 
+class VentaConDetalle(VentaResumen):
+    detalles: List[DetalleVentaOut]    
+
     class Config:
         orm_mode = True
      
