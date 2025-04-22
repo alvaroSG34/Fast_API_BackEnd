@@ -4,6 +4,8 @@ from app.db.session import get_db
 from app.models.category import Category
 from app.schemas.category import CategoryCreate, CategoryOut
 from app.schemas.category import CategoryUpdate
+from app.models.product import Product
+from app.schemas.product import ProductOut
 
 router = APIRouter()
 
@@ -47,3 +49,12 @@ def update_category(category_id: int, data: CategoryUpdate, db: Session = Depend
     db.commit()
     db.refresh(category)
     return category    
+
+@router.get("/{category_id}/products", response_model=list[ProductOut])
+def get_products_by_category(category_id: int, db: Session = Depends(get_db)):
+    category = db.query(Category).get(category_id)
+    if not category:
+        raise HTTPException(status_code=404, detail="Categoría no encontrada")
+    
+    products = db.query(Product).filter(Product.id_categoria == category_id).all()
+    return products    

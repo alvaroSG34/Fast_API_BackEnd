@@ -6,7 +6,7 @@ from fastapi import HTTPException
 import traceback
 
 from app.models.product import Product
-from app.models.sale import Venta
+from app.models.sale import Venta, EstadoVenta
 from app.models.sale_detail import DetalleVenta
 
 # Función principal para obtener recomendaciones basadas en un producto
@@ -84,13 +84,15 @@ def get_recommendations_for_product(db: Session, product_id: int, max_recommenda
         return get_recommendations_by_category(db, product_id, max_recommendations)
 
 # Función para generar las reglas de asociación usando Apriori
-def _generate_association_rules(db: Session, min_support=0.01, min_confidence=0.1):
+def _generate_association_rules(db: Session, min_support=0.002, min_confidence=0.05):
     """
     Genera reglas de asociación a partir del historial de ventas usando Apriori
+    - Reducido min_support a 0.002 para considerar más productos
+    - Reducido min_confidence a 0.05 para obtener más reglas
     """
     try:
-        # Obtener todas las ventas y sus detalles
-        ventas = db.query(Venta).filter(Venta.estado == 'completada').all()
+        # Obtener todas las ventas (sin filtrar por estado para incluir todas)
+        ventas = db.query(Venta).all()
         
         if not ventas:
             return pd.DataFrame()  # No hay datos suficientes
@@ -122,18 +124,26 @@ def _generate_association_rules(db: Session, min_support=0.01, min_confidence=0.
         for i, t in enumerate(transactions):
             basket.loc[i, t['productos']] = 1
         
+        # Log para debug
+        print(f"Generando reglas con {len(transactions)} transacciones y {len(all_products)} productos")
+        
         # Aplicar Apriori para encontrar conjuntos frecuentes
         frequent_itemsets = apriori(basket, min_support=min_support, use_colnames=True)
         
         if frequent_itemsets.empty:
+            print("No se encontraron conjuntos frecuentes con el soporte mínimo actual")
             return pd.DataFrame()  # No hay conjuntos frecuentes suficientes
             
         # Generar reglas de asociación
         rules = association_rules(frequent_itemsets, metric="confidence", min_threshold=min_confidence)
         
         if rules.empty:
+            print("No se generaron reglas con la confianza mínima actual")
             return pd.DataFrame()  # No hay reglas suficientes
             
+        # Log para debug
+        print(f"Se generaron {len(rules)} reglas de asociación")
+        
         # Convertir los frozensets a listas para facilitar su manejo
         rules['antecedents'] = rules['antecedents'].apply(lambda x: list(x))
         rules['consequents'] = rules['consequents'].apply(lambda x: list(x))
@@ -249,24 +259,43 @@ def get_recommendations_for_cart(db: Session, cart_item_ids: list, max_recommend
         all_recommendations = []
         recommended_ids = set()
         
-        for product_id in cart_item_ids:
-            # Filtrar reglas donde el producto actual está en los antecedentes
-            product_rules = rules_df[rules_df['antecedents'].apply(lambda x: product_id in x)]
-            
-            if not product_rules.empty:
-                # Ordenar por la métrica lift (mayor relevancia)
-                product_rules = product_rules.sort_values('lift', ascending=False)
+        # Primero intentamos encontrar reglas que coincidan con múltiples productos en el carrito
+        # Esto es para favorecer conjuntos de productos que se compran juntos
+        for _, row in rules_df.iterrows():
+            antecedents_set = set(row['antecedents'])
+            # Si múltiples productos del carrito están en los antecedentes
+            if len(antecedents_set.intersection(cart_item_ids)) > 1:
+                # Agregar los consecuentes como recomendaciones
+                for rec_id in row['consequents']:
+                    if rec_id not in cart_item_ids and rec_id not in recommended_ids:
+                        recommended_ids.add(rec_id)
+                        all_recommendations.append(rec_id)
+                        if len(all_recommendations) >= max_recommendations:
+                            break
                 
-                # Extraer los IDs de productos recomendados
-                for _, row in product_rules.iterrows():
-                    for rec_id in row['consequents']:
-                        if rec_id not in cart_item_ids and rec_id not in recommended_ids:
-                            recommended_ids.add(rec_id)
-                            all_recommendations.append(rec_id)
-                            if len(all_recommendations) >= max_recommendations:
-                                break
-                    if len(all_recommendations) >= max_recommendations:
-                        break
+                if len(all_recommendations) >= max_recommendations:
+                    break
+        
+        # Si no tenemos suficientes recomendaciones, buscar por productos individuales
+        if len(all_recommendations) < max_recommendations:
+            for product_id in cart_item_ids:
+                # Filtrar reglas donde el producto actual está en los antecedentes
+                product_rules = rules_df[rules_df['antecedents'].apply(lambda x: product_id in x)]
+                
+                if not product_rules.empty:
+                    # Ordenar por la métrica lift (mayor relevancia)
+                    product_rules = product_rules.sort_values('lift', ascending=False)
+                    
+                    # Extraer los IDs de productos recomendados
+                    for _, row in product_rules.iterrows():
+                        for rec_id in row['consequents']:
+                            if rec_id not in cart_item_ids and rec_id not in recommended_ids:
+                                recommended_ids.add(rec_id)
+                                all_recommendations.append(rec_id)
+                                if len(all_recommendations) >= max_recommendations:
+                                    break
+                        if len(all_recommendations) >= max_recommendations:
+                            break
         
         # Si no tenemos suficientes recomendaciones, complementar con productos diversos
         if len(all_recommendations) < max_recommendations:
